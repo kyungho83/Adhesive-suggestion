@@ -1,0 +1,17 @@
+{
+  "name": "BOND MATCH - 접착제 스펙 매칭 콘솔",
+  "short_name": "BOND MATCH",
+  "description": "접착제 스펙 데이터 기반 소재 조합/강도/온도 등 조건별 제품 추천 콘솔",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#16211d",
+  "theme_color": "#16211d",
+  "orientation": "portrait-primary",
+  "lang": "ko",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
