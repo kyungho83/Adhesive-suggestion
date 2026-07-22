@@ -964,6 +964,8 @@ function renderTray(){
 }
 
 document.getElementById('ctOpen').addEventListener('click', ()=>{
+  const prods = [...compareSet].map(id=>PRODUCTS.find(x=>x.id===id));
+
   const rows = [
     ['제품명', p=>p.name],
     ['경화방식', p=>p.curingType],
@@ -973,6 +975,7 @@ document.getElementById('ctOpen').addEventListener('click', ()=>{
     ['경화 후 색상 (0.1mm)', p=>p.cured01Color ?? '—'],
     ['경화 후 색상 (1mm)', p=>p.cured1Color ?? '—'],
     ['투명도', p=>p.transparency],
+    ['경화 후 투명도', p=>p.transparencyCured ?? '—'],
     ['필러', p=>p.fillerType],
     ['Shore A', p=>p.shoreA ?? '—'],
     ['Shore D', p=>p.shoreD ?? '—'],
@@ -988,13 +991,22 @@ document.getElementById('ctOpen').addEventListener('click', ()=>{
     ['체적수축률(%)', p=>p.volumeShrinkage ?? '—'],
     ['인장강도(MPa)', p=>p.tensile ?? '—'],
     ['신율(%)', p=>p.elongation ?? '—'],
-    ['포장 옵션', p=>{
-      if(!p.packaging || p.packaging.length===0) return '—';
-      return p.packaging.map(pk=>`${pk.volume??'—'} (MOQ ${pk.moq??'—'}, ${pk.priceEuro?pk.priceEuro+'€':'—'})`).join('<br>');
-    }],
-    ['비고', p=>p.remark ?? '—'],
   ];
-  const prods = [...compareSet].map(id=>PRODUCTS.find(x=>x.id===id));
+
+  // 전단강도(Compression shear strength): 비교 대상 중 최소 하나라도 값이 있는 소재조합만 행으로 추가
+  const shearPairKeys = new Set();
+  prods.forEach(p=>{ Object.keys(p.shear||{}).forEach(k=>shearPairKeys.add(k)); });
+  Array.from(shearPairKeys).sort().forEach(pairKey=>{
+    const label = `전단강도 (${pairKey.replace('-','/')}) MPa`;
+    rows.push([label, p=>(p.shear && p.shear[pairKey]!==undefined) ? p.shear[pairKey] : '—']);
+  });
+
+  rows.push(['포장 옵션', p=>{
+    if(!p.packaging || p.packaging.length===0) return '—';
+    return p.packaging.map(pk=>`${pk.volume??'—'} (MOQ ${pk.moq??'—'}, ${pk.priceEuro?pk.priceEuro+'€':'—'})`).join('<br>');
+  }]);
+  rows.push(['비고', p=>p.remark ?? '—']);
+
   let html = '<table><tr><th></th>' + prods.map(p=>`<th style="color:var(--ink);font-weight:600">${p.name}</th>`).join('') + '</tr>';
   rows.forEach(([label, fn])=>{
     html += `<tr><th>${label}</th>${prods.map(p=>`<td>${fn(p)}</td>`).join('')}</tr>`;
