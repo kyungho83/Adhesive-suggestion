@@ -210,11 +210,12 @@ table.pkg-table tr:last-child td{border-bottom:none;}
 /* modal */
 .modal-back{position:fixed;inset:0;background:rgba(20,25,22,.6);display:none;align-items:center;justify-content:center;z-index:100;padding:24px;}
 .modal-back.show{display:flex;}
-.modal{background:var(--panel);max-width:960px;width:100%;max-height:86vh;overflow:auto;border-radius:5px;padding:26px 28px;}
+.modal{background:var(--panel);max-width:1200px;width:100%;max-height:86vh;overflow:auto;border-radius:5px;padding:26px 28px;}
 .modal h2{font-family:var(--font-display);margin-top:0;font-size:20px;}
-.modal table{width:100%;border-collapse:collapse;font-size:12.5px;}
-.modal th,.modal td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-soft);font-family:var(--font-mono);vertical-align:top;}
-.modal th{color:var(--muted);font-weight:500;width:150px;}
+.modal table{width:max-content;min-width:100%;border-collapse:collapse;font-size:12.5px;}
+.modal th,.modal td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line-soft);font-family:var(--font-mono);vertical-align:top;white-space:nowrap;}
+.modal th{color:var(--muted);font-weight:500;min-width:120px;}
+.modal th:first-child{position:sticky;left:0;background:var(--panel);color:var(--muted);z-index:1;}
 .modal-close{float:right;font-family:var(--font-mono);cursor:pointer;color:var(--muted);font-size:20px;line-height:1;}
 
 footer.note{margin-top:36px;font-family:var(--font-mono);font-size:11px;color:var(--muted);line-height:1.7;border-top:1px solid var(--line-soft);padding-top:16px;}
@@ -385,6 +386,15 @@ footer.note{margin-top:36px;font-family:var(--font-mono);font-size:11px;color:va
         <input type="number" id="youngMin" placeholder="최소" min="0">
         <span class="tilde">~</span>
         <input type="number" id="youngMax" placeholder="최대" min="0">
+      </div>
+    </div>
+
+    <div class="field-group">
+      <div class="fg-label">인장강도 Tensile Strength (MPa)</div>
+      <div class="range-row">
+        <input type="number" id="tensileMin" placeholder="최소" min="0">
+        <span class="tilde">~</span>
+        <input type="number" id="tensileMax" placeholder="최대" min="0">
       </div>
     </div>
 
@@ -677,6 +687,7 @@ function getFilters(){
     hardScale: document.getElementById('hardScale').value,
     hardMin: numOrNull('hardMin'), hardMax: numOrNull('hardMax'),
     youngMin: numOrNull('youngMin'), youngMax: numOrNull('youngMax'),
+    tensileMin: numOrNull('tensileMin'), tensileMax: numOrNull('tensileMax'),
     fillerCat: document.getElementById('fillerCatSel').value,
     fsizeMin: numOrNull('fsizeMin'), fsizeMax: numOrNull('fsizeMax'),
     fluor: document.getElementById('fluorSel').value,
@@ -757,6 +768,8 @@ function evaluate(p, f){
   if(hardStat === 'out') return null;
   const youngStat = rangeStatus(p.young, f.youngMin, f.youngMax);
   if(youngStat === 'out') return null;
+  const tensileStat = rangeStatus(p.tensile, f.tensileMin, f.tensileMax);
+  if(tensileStat === 'out') return null;
   const fsizeStat = rangeStatus(p.fillerSizeUm, f.fsizeMin, f.fsizeMax);
   if(fsizeStat === 'out') return null;
 
@@ -784,6 +797,9 @@ function evaluate(p, f){
 
   if(youngStat==='in'){ score += 4; badges.push({t:'ok', label:`Young's Modulus ${p.young}MPa 충족`}); }
   else if(youngStat==='unknown' && (f.youngMin!==null||f.youngMax!==null)){ badges.push({t:'info', label:"Young's Modulus 데이터 없음"}); }
+
+  if(tensileStat==='in'){ score += 4; badges.push({t:'ok', label:`인장강도 ${p.tensile}MPa 충족`}); }
+  else if(tensileStat==='unknown' && (f.tensileMin!==null||f.tensileMax!==null)){ badges.push({t:'info', label:'인장강도 데이터 없음'}); }
 
   if(fsizeStat==='in'){ score += 3; badges.push({t:'ok', label:`필러 사이즈 ${p.fillerSizeUm}μm 충족`}); }
   else if(fsizeStat==='unknown' && (f.fsizeMin!==null||f.fsizeMax!==null)){ badges.push({t:'info', label:'필러 사이즈 데이터 없음'}); }
@@ -949,7 +965,7 @@ function render(){
     el.addEventListener('change', ()=>{
       const id = parseInt(el.dataset.id);
       if(el.checked){
-        if(compareSet.size>=4){ el.checked=false; alert('비교는 최대 4개까지 가능합니다.'); return; }
+        if(compareSet.size>=8){ el.checked=false; alert('비교는 최대 8개까지 가능합니다.'); return; }
         compareSet.add(id);
       } else {
         compareSet.delete(id);
@@ -1035,7 +1051,7 @@ document.getElementById('modalBack').addEventListener('click', (e)=>{ if(e.targe
 
 // ---------- events ----------
 const ALL_FIELD_IDS = ['matA','matB','minShear','tempMin','tempMax','transSel',
-  'viscMin','viscMax','tgMin','tgMax','hardScale','hardMin','hardMax','youngMin','youngMax',
+  'viscMin','viscMax','tgMin','tgMax','hardScale','hardMin','hardMax','youngMin','youngMax','tensileMin','tensileMax',
   'fillerCatSel','fsizeMin','fsizeMax','fluorSel','kwSearch','showDisc'];
 ALL_FIELD_IDS.forEach(id=>{
   document.getElementById(id).addEventListener('input', render);
@@ -1043,7 +1059,7 @@ ALL_FIELD_IDS.forEach(id=>{
 });
 document.getElementById('resetBtn').addEventListener('click', ()=>{
   matA.value=''; matB.value='';
-  ['minShear','tempMin','tempMax','viscMin','viscMax','tgMin','tgMax','hardMin','hardMax','youngMin','youngMax','fsizeMin','fsizeMax','kwSearch']
+  ['minShear','tempMin','tempMax','viscMin','viscMax','tgMin','tgMax','hardMin','hardMax','youngMin','youngMax','tensileMin','tensileMax','fsizeMin','fsizeMax','kwSearch']
     .forEach(id=>{ document.getElementById(id).value=''; });
   document.getElementById('transSel').value='';
   document.getElementById('fillerCatSel').value='';
