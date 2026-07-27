@@ -12,6 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BOND MATCH">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -217,6 +218,27 @@ table.pkg-table tr:last-child td{border-bottom:none;}
 .modal th{color:var(--muted);font-weight:500;}
 .modal th:first-child{position:sticky;left:0;background:var(--panel);color:var(--muted);z-index:1;white-space:nowrap;width:130px;}
 .modal-close{float:right;font-family:var(--font-mono);cursor:pointer;color:var(--muted);font-size:20px;line-height:1;}
+.modal-head-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.modal-head-row h2{margin:0;}
+.modal-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.export-btn{
+  font-family:var(--font-mono);font-size:11.5px;background:var(--teal);color:#fff;border:none;
+  padding:9px 16px;border-radius:3px;cursor:pointer;letter-spacing:.03em;white-space:nowrap;
+}
+.export-btn:hover{background:#175a50;}
+.export-btn.pdf{background:var(--resin);}
+.export-btn.pdf:hover{background:var(--resin-dark);}
+
+/* ---------- print (PDF export via browser print) ---------- */
+@media print{
+  body *{visibility:hidden;}
+  .modal-back, .modal-back *{visibility:visible;}
+  .modal-back{position:static;background:#fff;padding:0;display:block;}
+  .modal{max-width:none;max-height:none;overflow:visible;width:100%;box-shadow:none;padding:0;}
+  .modal-close, .modal-actions{display:none !important;}
+  .modal table{font-size:10.5px;}
+  .modal th:first-child{position:static;}
+}
 
 footer.note{margin-top:36px;font-family:var(--font-mono);font-size:11px;color:var(--muted);line-height:1.7;border-top:1px solid var(--line-soft);padding-top:16px;}
 
@@ -476,7 +498,13 @@ footer.note{margin-top:36px;font-family:var(--font-mono);font-size:11px;color:va
 <div class="modal-back" id="modalBack">
   <div class="modal">
     <span class="modal-close" id="modalClose">&times;</span>
-    <h2>제품 비교</h2>
+    <div class="modal-head-row">
+      <h2>제품 비교</h2>
+      <div class="modal-actions">
+        <button id="modalExportBtn" class="export-btn">⬇ 엑셀로 다운로드</button>
+        <button id="modalPdfBtn" class="export-btn pdf">🖨 PDF로 저장</button>
+      </div>
+    </div>
     <div id="modalBody"></div>
   </div>
 </div>
@@ -550,7 +578,10 @@ const COLOR_FAMILIES = [
 let PRODUCTS = EMBEDDED_PRODUCTS;
 const activeCuring = new Set();
 const activeColors = new Set();
+// ---------- compare state ----------
 const compareSet = new Set();
+let lastCompareRows = null;
+let lastCompareProds = null;
 
 function pairKey(a,b){ return [a,b].sort().join('-'); }
 
@@ -1032,11 +1063,21 @@ document.getElementById('ctOpen').addEventListener('click', ()=>{
     rows.push([label, p=>(p.shear && p.shear[pairKey]!==undefined) ? p.shear[pairKey] : '—']);
   });
 
-  rows.push(['포장 옵션', p=>{
-    if(!p.packaging || p.packaging.length===0) return '—';
-    return p.packaging.map(pk=>`${pk.volume??'—'} (MOQ ${pk.moq??'—'}, ${pk.priceEuro?pk.priceEuro+'€':'—'})`).join('<br>');
-  }]);
+  // 엑셀 내보내기용은 <br> 대신 줄바꿈(\n) 문자를 쓰고, 화면 표시용은 <br>을 씀
+  rows.push(['포장 옵션',
+    p=>{
+      if(!p.packaging || p.packaging.length===0) return '—';
+      return p.packaging.map(pk=>`${pk.volume??'—'} (MOQ ${pk.moq??'—'}, ${pk.priceEuro?pk.priceEuro+'€':'—'})`).join('<br>');
+    },
+    p=>{
+      if(!p.packaging || p.packaging.length===0) return '—';
+      return p.packaging.map(pk=>`${pk.volume??'—'} (MOQ ${pk.moq??'—'}, ${pk.priceEuro?pk.priceEuro+'€':'—'})`).join('\n');
+    }
+  ]);
   rows.push(['비고', p=>p.remark ?? '—']);
+
+  lastCompareRows = rows;
+  lastCompareProds = prods;
 
   let html = '<table><tr><th></th>' + prods.map(p=>`<th style="color:var(--ink);font-weight:600">${p.name}</th>`).join('') + '</tr>';
   rows.forEach(([label, fn])=>{
@@ -1048,6 +1089,39 @@ document.getElementById('ctOpen').addEventListener('click', ()=>{
 });
 document.getElementById('modalClose').addEventListener('click', ()=>document.getElementById('modalBack').classList.remove('show'));
 document.getElementById('modalBack').addEventListener('click', (e)=>{ if(e.target.id==='modalBack') e.currentTarget.classList.remove('show'); });
+
+document.getElementById('modalPdfBtn').addEventListener('click', ()=>{
+  if(!lastCompareProds || lastCompareProds.length===0) return;
+  window.print();
+});
+
+document.getElementById('modalExportBtn').addEventListener('click', ()=>{
+  if(!lastCompareRows || !lastCompareProds || lastCompareProds.length===0) return;
+  if(typeof XLSX === 'undefined'){
+    alert('엑셀 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
+    return;
+  }
+  const aoa = [];
+  aoa.push(['항목', ...lastCompareProds.map(p=>p.name)]);
+  lastCompareRows.forEach(row=>{
+    const label = row[0];
+    const displayFn = row[1];
+    const exportFn = row[2] || row[1]; // 3번째(엑셀 전용) 함수가 있으면 그걸 쓰고, 없으면 화면표시 함수 재사용
+    const cells = lastCompareProds.map(p=>{
+      const v = exportFn(p);
+      // 화면표시용 <br> 태그가 섞여 들어온 경우 줄바꿈으로 치환
+      return typeof v === 'string' ? v.replace(/<br\s*\/?>/g, '\n') : v;
+    });
+    aoa.push([label, ...cells]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{wch:22}, ...lastCompareProds.map(()=>({wch:24}))];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '제품비교');
+  const today = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `BondMatch_제품비교_${today}.xlsx`);
+});
 
 // ---------- events ----------
 const ALL_FIELD_IDS = ['matA','matB','minShear','tempMin','tempMax','transSel',
