@@ -231,9 +231,8 @@ table.pkg-table tr:last-child td{border-bottom:none;}
 
 /* ---------- print (PDF export via browser print) ---------- */
 @media print{
-  body *{visibility:hidden;}
-  .modal-back, .modal-back *{visibility:visible;}
-  .modal-back{position:static;background:#fff;padding:0;display:block;}
+  .nameplate, .conn-bar, .layout, .compare-tray, .lock-overlay{display:none !important;}
+  .modal-back{position:static !important;background:#fff !important;padding:0 !important;display:block !important;}
   .modal{max-width:none;max-height:none;overflow:visible;width:100%;box-shadow:none;padding:0;}
   .modal-close, .modal-actions{display:none !important;}
   .modal table{font-size:10.5px;}
