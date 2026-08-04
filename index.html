@@ -937,10 +937,16 @@ function renderCard(res, f){
 
   const badgesHtml = res.badges.map(b=>`<span class="badge ${b.t}">${b.label}</span>`).join('');
 
+  const viscItems = [];
+  if(p.viscosity!==null && p.viscosity!==undefined) viscItems.push(specItem('점도(cP)', fmt(p.viscosity)));
+  if(p.viscosity21!==null && p.viscosity21!==undefined) viscItems.push(specItem('점도(2:1)(cP)', fmt(p.viscosity21)));
+  if(p.viscosity101!==null && p.viscosity101!==undefined) viscItems.push(specItem('점도(10:1)(cP)', fmt(p.viscosity101)));
+  if(viscItems.length===0) viscItems.push(specItem('점도(cP)', fmt(null)));
+
   const specs = [
     specItem('경화방식', fmt(p.curingType)),
     specItem('사용온도(℃)', fmt(p.opTempRaw)),
-    specItem('점도(cP)', fmt(p.viscosity ?? p.viscosity21 ?? p.viscosity101)),
+    ...viscItems,
     specItem('색상', fmt(p.color)),
     specItem('투명도', fmt(p.transparency)),
     specItem('필러', fmt(p.fillerType)),
